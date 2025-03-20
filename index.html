@@ -1,745 +1,525 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gra Labirynt z Kryjówkami</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-            background-color: #f0f0f0;
-        }
-        #game-container {
-            margin-bottom: 20px;
-        }
-        #maze {
-            border: 2px solid #333;
-            background-color: white;
-        }
-        .controls {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-gap: 5px;
-            margin-top: 20px;
-            width: 150px;
-        }
-        button {
-            padding: 10px;
-            font-size: 16px;
-            cursor: pointer;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        #win-modal, #lose-modal {
-            display: none;
-            position: fixed;
-            z-index: 1;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.4);
-        }
-        .modal-content {
-            background-color: #fefefe;
-            margin: 15% auto;
-            padding: 20px;
-            border: 1px solid #888;
-            width: 300px;
-            text-align: center;
-            border-radius: 5px;
-        }
-        #up-btn { grid-column: 2; grid-row: 1; }
-        #left-btn { grid-column: 1; grid-row: 2; }
-        #down-btn { grid-column: 2; grid-row: 2; }
-        #right-btn { grid-column: 3; grid-row: 2; }
-        #level-info {
-            margin-bottom: 10px;
-            font-weight: bold;
-        }
-        #game-info {
-            margin-bottom: 10px;
-            font-style: italic;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gra Labirynt z Kryjówkami</title>
+  <style>
+    /* Ustawienia globalne, by cała zawartość była wyśrodkowana i nie przekraczała wymiarów ekranu */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden; /* Zapobiega przewijaniu */
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: #f0f0f0;
+    }
+    #game-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #maze {
+      border: 2px solid #333;
+      background-color: white;
+      display: block;
+      margin: 0 auto;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-gap: 5px;
+      margin-top: 20px;
+      width: 100%;
+      max-width: 300px;
+    }
+    button {
+      padding: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    #win-modal, #lose-modal {
+      display: none;
+      position: fixed;
+      z-index: 1;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.4);
+    }
+    .modal-content {
+      background-color: #fefefe;
+      margin: 15% auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 300px;
+      text-align: center;
+      border-radius: 5px;
+    }
+    /* Rozmieszczenie przycisków sterujących */
+    #up-btn { grid-column: 2; grid-row: 1; }
+    #left-btn { grid-column: 1; grid-row: 2; }
+    #down-btn { grid-column: 2; grid-row: 2; }
+    #right-btn { grid-column: 3; grid-row: 2; }
+    
+    /* Powiększenie przycisków na urządzeniach mobilnych */
+    @media (max-width: 600px) {
+      button {
+        padding: 15px;
+        font-size: 20px;
+      }
+    }
+    
+    #level-info, #game-info, h1 {
+      text-align: center;
+      margin: 10px 0;
+    }
+  </style>
 </head>
 <body>
-    <h1>Gra Labirynt z Kryjówkami</h1>
-    <div id="level-info">Poziom: 1 | Strażnicy: 2</div>
-    <div id="game-info">Znajdź wyjście (czerwony kwadrat). Ukryj się w kryjówkach (żółte kółka).</div>
-    <div id="game-container">
-        <canvas id="maze" width="500" height="500"></canvas>
-        <div class="controls">
-            <button id="up-btn">↑</button>
-            <button id="left-btn">←</button>
-            <button id="down-btn">↓</button>
-            <button id="right-btn">→</button>
-        </div>
+  <h1>Gra Labirynt z Kryjówkami</h1>
+  <div id="level-info">Poziom: 1 | Strażnicy: 2</div>
+  <div id="game-info">Znajdź wyjście (czerwony kwadrat). Ukryj się w kryjówkach (żółte kółka).</div>
+  <div id="game-container">
+    <canvas id="maze"></canvas>
+    <div class="controls">
+      <button id="up-btn">↑</button>
+      <button id="left-btn">←</button>
+      <button id="down-btn">↓</button>
+      <button id="right-btn">→</button>
     </div>
+  </div>
 
-    <div id="win-modal">
-        <div class="modal-content">
-            <h2>Gratulacje!</h2>
-            <p>Udało Ci się przejść labirynt!</p>
-            <button id="play-again">Zagraj ponownie</button>
-        </div>
+  <div id="win-modal">
+    <div class="modal-content">
+      <h2>Gratulacje!</h2>
+      <p>Udało Ci się przejść labirynt!</p>
+      <button id="play-again">Zagraj ponownie</button>
     </div>
+  </div>
 
-    <div id="lose-modal">
-        <div class="modal-content">
-            <h2>Złapany!</h2>
-            <p>Zostałeś złapany przez strażnika!</p>
-            <button id="try-again">Spróbuj ponownie</button>
-        </div>
+  <div id="lose-modal">
+    <div class="modal-content">
+      <h2>Złapany!</h2>
+      <p>Zostałeś złapany przez strażnika!</p>
+      <button id="try-again">Spróbuj ponownie</button>
     </div>
+  </div>
 
-    <script>
-        const canvas = document.getElementById('maze');
-        const ctx = canvas.getContext('2d');
-        const upBtn = document.getElementById('up-btn');
-        const leftBtn = document.getElementById('left-btn');
-        const downBtn = document.getElementById('down-btn');
-        const rightBtn = document.getElementById('right-btn');
-        const winModal = document.getElementById('win-modal');
-        const loseModal = document.getElementById('lose-modal');
-        const playAgainBtn = document.getElementById('play-again');
-        const tryAgainBtn = document.getElementById('try-again');
-        const levelInfo = document.getElementById('level-info');
+  <script>
+    const canvas = document.getElementById('maze');
+    const ctx = canvas.getContext('2d');
+    const upBtn = document.getElementById('up-btn');
+    const leftBtn = document.getElementById('left-btn');
+    const downBtn = document.getElementById('down-btn');
+    const rightBtn = document.getElementById('right-btn');
+    const winModal = document.getElementById('win-modal');
+    const loseModal = document.getElementById('lose-modal');
+    const playAgainBtn = document.getElementById('play-again');
+    const tryAgainBtn = document.getElementById('try-again');
+    const levelInfo = document.getElementById('level-info');
 
-        // Parametry labiryntu
-        const cellSize = 25;
-        const rows = 19;
-        const cols = 19;
-        const width = cols * cellSize;
-        const height = rows * cellSize;
+    // Parametry labiryntu
+    let cellSize = 25; // zostanie nadpisana przez funkcję resizeGame()
+    const rows = 19;
+    const cols = 19;
+    let width, height;
 
-        canvas.width = width;
-        canvas.height = height;
+    // Ustawienia gry
+    let level = 1;
+    let guardCount = 2;
+    let hidingSpots = [];
+    const HIDING_SPOTS_COUNT = 4;
 
-        // Ustawienia gry
-        let level = 1;
-        let guardCount = 2;
-        let hidingSpots = []; // Tablica przechowująca pozycje kryjówek
-        const HIDING_SPOTS_COUNT = 4; // Liczba dodatkowych kryjówek (oprócz startu)
-
-        // Klasa reprezentująca komórkę labiryntu
-        class Cell {
-            constructor(row, col) {
-                this.row = row;
-                this.col = col;
-                this.visited = false;
-                this.walls = {
-                    top: true,
-                    right: true,
-                    bottom: true,
-                    left: true
-                };
-                this.partOfSolution = false;
-                this.isHidingSpot = false;
-            }
-
-            removeWall(next) {
-                const rowDiff = this.row - next.row;
-                const colDiff = this.col - next.col;
-
-                if (rowDiff === 1) {
-                    this.walls.top = false;
-                    next.walls.bottom = false;
-                } else if (rowDiff === -1) {
-                    this.walls.bottom = false;
-                    next.walls.top = false;
-                }
-
-                if (colDiff === 1) {
-                    this.walls.left = false;
-                    next.walls.right = false;
-                } else if (colDiff === -1) {
-                    this.walls.right = false;
-                    next.walls.left = false;
-                }
-            }
-
-            draw() {
-                const x = this.col * cellSize;
-                const y = this.row * cellSize;
-
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 2;
-
-                if (this.walls.top) {
-                    ctx.beginPath();
-                    ctx.moveTo(x, y);
-                    ctx.lineTo(x + cellSize, y);
-                    ctx.stroke();
-                }
-
-                if (this.walls.right) {
-                    ctx.beginPath();
-                    ctx.moveTo(x + cellSize, y);
-                    ctx.lineTo(x + cellSize, y + cellSize);
-                    ctx.stroke();
-                }
-
-                if (this.walls.bottom) {
-                    ctx.beginPath();
-                    ctx.moveTo(x, y + cellSize);
-                    ctx.lineTo(x + cellSize, y + cellSize);
-                    ctx.stroke();
-                }
-
-                if (this.walls.left) {
-                    ctx.beginPath();
-                    ctx.moveTo(x, y);
-                    ctx.lineTo(x, y + cellSize);
-                    ctx.stroke();
-                }
-
-                // Jeśli to kryjówka, narysuj żółte koło
-                if (this.isHidingSpot) {
-                    ctx.fillStyle = 'gold';
-                    ctx.beginPath();
-                    ctx.arc(x + cellSize/2, y + cellSize/2, cellSize/3, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
+    class Cell {
+      constructor(row, col) {
+        this.row = row;
+        this.col = col;
+        this.visited = false;
+        this.walls = { top: true, right: true, bottom: true, left: true };
+        this.partOfSolution = false;
+        this.isHidingSpot = false;
+      }
+      removeWall(next) {
+        const rowDiff = this.row - next.row;
+        const colDiff = this.col - next.col;
+        if (rowDiff === 1) { this.walls.top = false; next.walls.bottom = false; }
+        else if (rowDiff === -1) { this.walls.bottom = false; next.walls.top = false; }
+        if (colDiff === 1) { this.walls.left = false; next.walls.right = false; }
+        else if (colDiff === -1) { this.walls.right = false; next.walls.left = false; }
+      }
+      draw() {
+        const x = this.col * cellSize;
+        const y = this.row * cellSize;
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        if (this.walls.top) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + cellSize, y); ctx.stroke(); }
+        if (this.walls.right) { ctx.beginPath(); ctx.moveTo(x + cellSize, y); ctx.lineTo(x + cellSize, y + cellSize); ctx.stroke(); }
+        if (this.walls.bottom) { ctx.beginPath(); ctx.moveTo(x, y + cellSize); ctx.lineTo(x + cellSize, y + cellSize); ctx.stroke(); }
+        if (this.walls.left) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + cellSize); ctx.stroke(); }
+        if (this.isHidingSpot) {
+          ctx.fillStyle = 'gold';
+          ctx.beginPath();
+          ctx.arc(x + cellSize/2, y + cellSize/2, cellSize/3, 0, Math.PI * 2);
+          ctx.fill();
         }
+      }
+    }
 
-        // Zmodyfikowana klasa strażnika ze sztuczną inteligencją
-        class Guard {
-            constructor(row, col) {
-                this.row = row;
-                this.col = col;
-                this.lastMove = null; // Ostatni ruch (dla zapobiegania zawracaniu)
-            }
-
-            update() {
-                // Sprawdzamy, czy gracz jest w kryjówce - jeśli tak, guard nie może go złapać
-                if (isPlayerHiding()) {
-                    // Strażnik nadal się porusza, ale nie może złapać gracza
-                    this.move();
-                    return;
-                }
-
-                // Ruch strażnika
-                this.move();
-
-                // Sprawdzenie kolizji z graczem (tylko jeśli gracz nie jest w kryjówce)
-                if (this.row === player.row && this.col === player.col) {
-                    stopGame();
-                    loseModal.style.display = 'block';
-                }
-            }
-
-            move() {
-                // Pobieranie możliwych kierunków ruchu
-                const possibleMoves = this.getPossibleMoves();
-
-                // Jeśli nie ma możliwych ruchów, nie rób nic
-                if (possibleMoves.length === 0) return;
-
-                // Wybierz losowy ruch, preferując ruch do przodu
-                let nextMove;
-
-                // 70% szans na kontynuowanie kierunku, jeśli to możliwe
-                if (this.lastMove && Math.random() < 0.7) {
-                    const sameDirectionMove = possibleMoves.find(move =>
-                        move.direction === this.lastMove.direction
-                    );
-                    if (sameDirectionMove) {
-                        nextMove = sameDirectionMove;
-                    } else {
-                        nextMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
-                    }
-                } else {
-                    nextMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
-                }
-
-                // Wykonaj ruch
-                this.row = nextMove.row;
-                this.col = nextMove.col;
-                this.lastMove = nextMove;
-            }
-
-            getPossibleMoves() {
-                const currentCell = grid[this.row][this.col];
-                const possibleMoves = [];
-
-                // Sprawdź wszystkie możliwe kierunki ruchu
-                if (!currentCell.walls.top) {
-                    possibleMoves.push({
-                        row: this.row - 1,
-                        col: this.col,
-                        direction: 'up'
-                    });
-                }
-
-                if (!currentCell.walls.right) {
-                    possibleMoves.push({
-                        row: this.row,
-                        col: this.col + 1,
-                        direction: 'right'
-                    });
-                }
-
-                if (!currentCell.walls.bottom) {
-                    possibleMoves.push({
-                        row: this.row + 1,
-                        col: this.col,
-                        direction: 'down'
-                    });
-                }
-
-                if (!currentCell.walls.left) {
-                    possibleMoves.push({
-                        row: this.row,
-                        col: this.col - 1,
-                        direction: 'left'
-                    });
-                }
-
-                // Filtruj, aby uniknąć zawracania (opcjonalne)
-                if (this.lastMove && possibleMoves.length > 1) {
-                    // Znajdź przeciwny kierunek
-                    let oppositeDirection;
-                    switch(this.lastMove.direction) {
-                        case 'up': oppositeDirection = 'down'; break;
-                        case 'right': oppositeDirection = 'left'; break;
-                        case 'down': oppositeDirection = 'up'; break;
-                        case 'left': oppositeDirection = 'right'; break;
-                    }
-
-                    // Usuń ruch w przeciwnym kierunku, chyba że to jedyna opcja
-                    const filteredMoves = possibleMoves.filter(move =>
-                        move.direction !== oppositeDirection
-                    );
-
-                    if (filteredMoves.length > 0) {
-                        return filteredMoves;
-                    }
-                }
-
-                // Unikaj pozycji startowej i mety
-                return possibleMoves.filter(move =>
-                    !(move.row === 0 && move.col === 0) &&
-                    !(move.row === rows - 1 && move.col === cols - 1)
-                );
-            }
-
-            draw() {
-                const x = this.col * cellSize;
-                const y = this.row * cellSize;
-
-                ctx.fillStyle = 'blue';
-                ctx.beginPath();
-                ctx.arc(x + cellSize/2, y + cellSize/2, cellSize/3, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Dodanie "oczu" dla strażnika
-                ctx.fillStyle = 'white';
-                ctx.beginPath();
-                ctx.arc(x + cellSize/2 - 3, y + cellSize/2 - 2, 2, 0, Math.PI * 2);
-                ctx.arc(x + cellSize/2 + 3, y + cellSize/2 - 2, 2, 0, Math.PI * 2);
-                ctx.fill();
-            }
+    class Guard {
+      constructor(row, col) {
+        this.row = row;
+        this.col = col;
+        this.lastMove = null;
+      }
+      update() {
+        if (isPlayerHiding()) { this.move(); return; }
+        this.move();
+        if (this.row === player.row && this.col === player.col) {
+          stopGame();
+          loseModal.style.display = 'block';
         }
-
-        // Model gry
-        let grid = [];
-        let player = { row: 0, col: 0 };
-        let finish = { row: rows - 1, col: cols - 1 };
-        let guards = [];
-        let solutionPath = [];
-        let gameInterval;
-
-        // Funkcja sprawdzająca, czy gracz jest w kryjówce
-        function isPlayerHiding() {
-            // Start zawsze jest kryjówką
-            if (player.row === 0 && player.col === 0) {
-                return true;
-            }
-
-            // Sprawdź, czy obecna pozycja gracza jest kryjówką
-            return grid[player.row][player.col].isHidingSpot;
+      }
+      move() {
+        const possibleMoves = this.getPossibleMoves();
+        if (possibleMoves.length === 0) return;
+        let nextMove;
+        if (this.lastMove && Math.random() < 0.7) {
+          const sameDirectionMove = possibleMoves.find(move => move.direction === this.lastMove.direction);
+          nextMove = sameDirectionMove || possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+        } else {
+          nextMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
         }
-
-        // Inicjalizacja labiryntu
-        function initGrid() {
-            grid = [];
-            for (let row = 0; row < rows; row++) {
-                grid[row] = [];
-                for (let col = 0; col < cols; col++) {
-                    grid[row][col] = new Cell(row, col);
-                }
-            }
+        this.row = nextMove.row;
+        this.col = nextMove.col;
+        this.lastMove = nextMove;
+      }
+      getPossibleMoves() {
+        const currentCell = grid[this.row][this.col];
+        const possibleMoves = [];
+        if (!currentCell.walls.top) { possibleMoves.push({ row: this.row - 1, col: this.col, direction: 'up' }); }
+        if (!currentCell.walls.right) { possibleMoves.push({ row: this.row, col: this.col + 1, direction: 'right' }); }
+        if (!currentCell.walls.bottom) { possibleMoves.push({ row: this.row + 1, col: this.col, direction: 'down' }); }
+        if (!currentCell.walls.left) { possibleMoves.push({ row: this.row, col: this.col - 1, direction: 'left' }); }
+        if (this.lastMove && possibleMoves.length > 1) {
+          let oppositeDirection;
+          switch(this.lastMove.direction) {
+            case 'up': oppositeDirection = 'down'; break;
+            case 'right': oppositeDirection = 'left'; break;
+            case 'down': oppositeDirection = 'up'; break;
+            case 'left': oppositeDirection = 'right'; break;
+          }
+          const filteredMoves = possibleMoves.filter(move => move.direction !== oppositeDirection);
+          if (filteredMoves.length > 0) return filteredMoves;
         }
+        return possibleMoves.filter(move => !(move.row === 0 && move.col === 0) && !(move.row === rows - 1 && move.col === cols - 1));
+      }
+      draw() {
+        const x = this.col * cellSize;
+        const y = this.row * cellSize;
+        ctx.fillStyle = 'blue';
+        ctx.beginPath();
+        ctx.arc(x + cellSize/2, y + cellSize/2, cellSize/3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.arc(x + cellSize/2 - 3, y + cellSize/2 - 2, 2, 0, Math.PI * 2);
+        ctx.arc(x + cellSize/2 + 3, y + cellSize/2 - 2, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
 
-        // Generowanie labiryntu algorytmem DFS
-        function generateMaze() {
-            const stack = [];
-            const startCell = grid[0][0];
-            startCell.visited = true;
-            stack.push(startCell);
-            solutionPath = [];
+    let grid = [];
+    let player = { row: 0, col: 0 };
+    let finish = { row: rows - 1, col: cols - 1 };
+    let guards = [];
+    let solutionPath = [];
+    let gameInterval;
 
-            while (stack.length > 0) {
-                const current = stack[stack.length - 1];
+    function isPlayerHiding() {
+      if (player.row === 0 && player.col === 0) return true;
+      return grid[player.row][player.col].isHidingSpot;
+    }
 
-                // Dodawanie do ścieżki rozwiązania
-                if (!solutionPath.includes(current)) {
-                    solutionPath.push(current);
-                }
-
-                const neighbors = getUnvisitedNeighbors(current);
-
-                if (neighbors.length === 0) {
-                    stack.pop();
-
-                    // Usuwanie martwych końcówek z ścieżki rozwiązania
-                    if (stack.length > 0 && solutionPath[solutionPath.length - 1] === current) {
-                        solutionPath.pop();
-                    }
-                } else {
-                    const next = neighbors[Math.floor(Math.random() * neighbors.length)];
-                    next.visited = true;
-                    current.removeWall(next);
-                    stack.push(next);
-                }
-            }
-
-            // Znajdowanie najkrótszej ścieżki od startu do mety
-            findShortestPath();
+    function initGrid() {
+      grid = [];
+      for (let row = 0; row < rows; row++) {
+        grid[row] = [];
+        for (let col = 0; col < cols; col++) {
+          grid[row][col] = new Cell(row, col);
         }
+      }
+    }
 
-        function getUnvisitedNeighbors(cell) {
-            const neighbors = [];
-            const { row, col } = cell;
-
-            // Sprawdzamy sąsiadów w kolejności: góra, prawo, dół, lewo
-            const directions = [
-                { row: row - 1, col: col },
-                { row: row, col: col + 1 },
-                { row: row + 1, col: col },
-                { row: row, col: col - 1 }
-            ];
-
-            for (const dir of directions) {
-                if (dir.row >= 0 && dir.row < rows && dir.col >= 0 && dir.col < cols) {
-                    const neighbor = grid[dir.row][dir.col];
-                    if (!neighbor.visited) {
-                        neighbors.push(neighbor);
-                    }
-                }
-            }
-
-            return neighbors;
+    function generateMaze() {
+      const stack = [];
+      const startCell = grid[0][0];
+      startCell.visited = true;
+      stack.push(startCell);
+      solutionPath = [];
+      while (stack.length > 0) {
+        const current = stack[stack.length - 1];
+        if (!solutionPath.includes(current)) { solutionPath.push(current); }
+        const neighbors = getUnvisitedNeighbors(current);
+        if (neighbors.length === 0) {
+          stack.pop();
+          if (stack.length > 0 && solutionPath[solutionPath.length - 1] === current) { solutionPath.pop(); }
+        } else {
+          const next = neighbors[Math.floor(Math.random() * neighbors.length)];
+          next.visited = true;
+          current.removeWall(next);
+          stack.push(next);
         }
+      }
+      findShortestPath();
+    }
 
-        // Znajdowanie najkrótszej ścieżki używając BFS
-        function findShortestPath() {
-            const queue = [];
-            const visited = new Set();
-            const previous = new Map();
-
-            const start = grid[0][0];
-            const end = grid[rows - 1][cols - 1];
-
-            queue.push(start);
-            visited.add(start);
-
-            while (queue.length > 0) {
-                const current = queue.shift();
-
-                if (current === end) {
-                    break;
-                }
-
-                const neighbors = getAccessibleNeighbors(current);
-
-                for (const neighbor of neighbors) {
-                    if (!visited.has(neighbor)) {
-                        queue.push(neighbor);
-                        visited.add(neighbor);
-                        previous.set(neighbor, current);
-                    }
-                }
-            }
-
-            // Rekonstrukcja ścieżki
-            solutionPath = [];
-            let current = end;
-
-            while (current !== start) {
-                solutionPath.unshift(current);
-                current = previous.get(current);
-                if (!current) break; // na wszelki wypadek
-            }
-
-            solutionPath.unshift(start);
-
-            // Oznaczenie komórek jako część rozwiązania
-            for (const cell of solutionPath) {
-                cell.partOfSolution = true;
-            }
+    function getUnvisitedNeighbors(cell) {
+      const neighbors = [];
+      const { row, col } = cell;
+      const directions = [
+        { row: row - 1, col: col },
+        { row: row, col: col + 1 },
+        { row: row + 1, col: col },
+        { row: row, col: col - 1 }
+      ];
+      for (const dir of directions) {
+        if (dir.row >= 0 && dir.row < rows && dir.col >= 0 && dir.col < cols) {
+          const neighbor = grid[dir.row][dir.col];
+          if (!neighbor.visited) { neighbors.push(neighbor); }
         }
+      }
+      return neighbors;
+    }
 
-        function getAccessibleNeighbors(cell) {
-            const neighbors = [];
-            const { row, col } = cell;
-
-            // Sprawdzamy dostępnych sąsiadów (bez ścian)
-            if (!cell.walls.top && row > 0) {
-                neighbors.push(grid[row - 1][col]);
-            }
-            if (!cell.walls.right && col < cols - 1) {
-                neighbors.push(grid[row][col + 1]);
-            }
-            if (!cell.walls.bottom && row < rows - 1) {
-                neighbors.push(grid[row + 1][col]);
-            }
-            if (!cell.walls.left && col > 0) {
-                neighbors.push(grid[row][col - 1]);
-            }
-
-            return neighbors;
+    function findShortestPath() {
+      const queue = [];
+      const visited = new Set();
+      const previous = new Map();
+      const start = grid[0][0];
+      const end = grid[rows - 1][cols - 1];
+      queue.push(start);
+      visited.add(start);
+      while (queue.length > 0) {
+        const current = queue.shift();
+        if (current === end) break;
+        const neighbors = getAccessibleNeighbors(current);
+        for (const neighbor of neighbors) {
+          if (!visited.has(neighbor)) {
+            queue.push(neighbor);
+            visited.add(neighbor);
+            previous.set(neighbor, current);
+          }
         }
+      }
+      solutionPath = [];
+      let current = end;
+      while (current !== start) {
+        solutionPath.unshift(current);
+        current = previous.get(current);
+        if (!current) break;
+      }
+      solutionPath.unshift(start);
+      for (const cell of solutionPath) {
+        cell.partOfSolution = true;
+      }
+    }
 
-        // Funkcja dodająca kryjówki
-        function createHidingSpots() {
-            hidingSpots = [];
-            const availableCells = [];
+    function getAccessibleNeighbors(cell) {
+      const neighbors = [];
+      const { row, col } = cell;
+      if (!cell.walls.top && row > 0) { neighbors.push(grid[row - 1][col]); }
+      if (!cell.walls.right && col < cols - 1) { neighbors.push(grid[row][col + 1]); }
+      if (!cell.walls.bottom && row < rows - 1) { neighbors.push(grid[row + 1][col]); }
+      if (!cell.walls.left && col > 0) { neighbors.push(grid[row][col - 1]); }
+      return neighbors;
+    }
 
-            // Zbieranie wszystkich komórek z wyjątkiem startu i mety
-            for (let row = 0; row < rows; row++) {
-                for (let col = 0; col < cols; col++) {
-                    // Sprawdzanie, czy pozycja nie jest startem lub metą
-                    if ((row !== 0 || col !== 0) && (row !== rows - 1 || col !== cols - 1)) {
-                        availableCells.push({row, col});
-                    }
-                }
-            }
-
-            // Mieszanie tablicy dla losowego wyboru
-            shuffleArray(availableCells);
-
-            // Wybieranie losowych komórek na kryjówki
-            for (let i = 0; i < HIDING_SPOTS_COUNT && i < availableCells.length; i++) {
-                const position = availableCells[i];
-                grid[position.row][position.col].isHidingSpot = true;
-                hidingSpots.push(position);
-            }
+    function createHidingSpots() {
+      hidingSpots = [];
+      const availableCells = [];
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          if ((row !== 0 || col !== 0) && (row !== rows - 1 || col !== cols - 1)) {
+            availableCells.push({row, col});
+          }
         }
+      }
+      shuffleArray(availableCells);
+      for (let i = 0; i < HIDING_SPOTS_COUNT && i < availableCells.length; i++) {
+        const position = availableCells[i];
+        grid[position.row][position.col].isHidingSpot = true;
+        hidingSpots.push(position);
+      }
+    }
 
-        // Zmodyfikowana funkcja tworzenia strażników - rozmieszcza ich losowo po labiryncie
-        function createGuards() {
-            guards = [];
-            const availableCells = [];
-
-            // Zbieranie wszystkich komórek z wyjątkiem startu, mety i kryjówek
-            for (let row = 0; row < rows; row++) {
-                for (let col = 0; col < cols; col++) {
-                    // Sprawdzanie, czy pozycja nie jest startem, metą lub kryjówką
-                    if ((row !== 0 || col !== 0) &&
-                        (row !== rows - 1 || col !== cols - 1) &&
-                        !grid[row][col].isHidingSpot) {
-                        availableCells.push({row, col});
-                    }
-                }
-            }
-
-            // Mieszanie tablicy dla losowego wyboru
-            shuffleArray(availableCells);
-
-            // Wybierz losowe komórki dla strażników
-            for (let i = 0; i < guardCount && i < availableCells.length; i++) {
-                const position = availableCells[i];
-                guards.push(new Guard(position.row, position.col));
-            }
+    function createGuards() {
+      guards = [];
+      const availableCells = [];
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          if ((row !== 0 || col !== 0) &&
+              (row !== rows - 1 || col !== cols - 1) &&
+              !grid[row][col].isHidingSpot) {
+            availableCells.push({row, col});
+          }
         }
+      }
+      shuffleArray(availableCells);
+      for (let i = 0; i < guardCount && i < availableCells.length; i++) {
+        const position = availableCells[i];
+        guards.push(new Guard(position.row, position.col));
+      }
+    }
 
-        // Funkcja pomocnicza do mieszania tablicy
-        function shuffleArray(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-            return array;
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function drawMaze() {
+      ctx.clearRect(0, 0, width, height);
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          grid[row][col].draw();
         }
+      }
+      ctx.fillStyle = 'red';
+      ctx.fillRect(finish.col * cellSize + cellSize*0.2, finish.row * cellSize + cellSize*0.2, cellSize*0.6, cellSize*0.6);
+      for (const guard of guards) {
+        guard.draw();
+      }
+      ctx.fillStyle = 'gold';
+      ctx.beginPath();
+      ctx.arc(cellSize/2, cellSize/2, cellSize/3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'green';
+      ctx.beginPath();
+      ctx.arc(player.col * cellSize + cellSize/2, player.row * cellSize + cellSize/2, cellSize/4, 0, Math.PI * 2);
+      ctx.fill();
+      if (isPlayerHiding()) {
+        ctx.strokeStyle = 'lime';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(player.col * cellSize + cellSize/2, player.row * cellSize + cellSize/2, cellSize/3 + 3, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
 
-        // Rysowanie labiryntu
-        function drawMaze() {
-            ctx.clearRect(0, 0, width, height);
+    function updateGuards() {
+      for (const guard of guards) {
+        guard.update();
+      }
+      drawMaze();
+    }
 
-            // Rysowanie komórek i kryjówek
-            for (let row = 0; row < rows; row++) {
-                for (let col = 0; col < cols; col++) {
-                    grid[row][col].draw();
-                }
-            }
-
-            // Oznaczanie mety (czerwony)
-            ctx.fillStyle = 'red';
-            ctx.fillRect(finish.col * cellSize + 5, finish.row * cellSize + 5, cellSize - 10, cellSize - 10);
-
-            // Rysowanie strażników
-            for (const guard of guards) {
-                guard.draw();
-            }
-
-            // Oznaczanie startu jako kryjówki (jeśli jeszcze nie zostało to zrobione)
-            ctx.fillStyle = 'gold';
-            ctx.beginPath();
-            ctx.arc(cellSize/2, cellSize/2, cellSize/3, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Oznaczanie gracza (zielony)
-            ctx.fillStyle = 'green';
-            ctx.beginPath();
-            ctx.arc(player.col * cellSize + cellSize/2, player.row * cellSize + cellSize/2, cellSize/4, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Jeśli gracz jest w kryjówce, dodaj efekt wizualny
-            if (isPlayerHiding()) {
-                ctx.strokeStyle = 'lime';
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(player.col * cellSize + cellSize/2, player.row * cellSize + cellSize/2, cellSize/3 + 3, 0, Math.PI * 2);
-                ctx.stroke();
-            }
+    function movePlayer(direction) {
+      const currentCell = grid[player.row][player.col];
+      switch (direction) {
+        case 'up': if (!currentCell.walls.top) player.row--; break;
+        case 'right': if (!currentCell.walls.right) player.col++; break;
+        case 'down': if (!currentCell.walls.bottom) player.row++; break;
+        case 'left': if (!currentCell.walls.left) player.col--; break;
+      }
+      if (!isPlayerHiding()) {
+        for (const guard of guards) {
+          if (guard.row === player.row && guard.col === player.col) {
+            stopGame();
+            loseModal.style.display = 'block';
+            return;
+          }
         }
+      }
+      drawMaze();
+      if (player.row === finish.row && player.col === finish.col) {
+        stopGame();
+        level++;
+        guardCount = Math.min(level + 1, 8);
+        winModal.style.display = 'block';
+      }
+    }
 
-        // Aktualizacja strażników
-        function updateGuards() {
-            for (const guard of guards) {
-                guard.update();
-            }
-            drawMaze();
-        }
+    function stopGame() {
+      clearInterval(gameInterval);
+    }
 
-        // Poruszanie się po labiryncie
-        function movePlayer(direction) {
-            const currentCell = grid[player.row][player.col];
+    // Funkcja resizeGame oblicza dostępny rozmiar planszy,
+    // odejmując od okna wysokość nagłówka, informacji i przycisków sterowania,
+    // dzięki czemu plansza nigdy nie przekracza wymiarów ekranu.
+    function resizeGame() {
+      const headerHeight = document.querySelector('h1').offsetHeight;
+      const infoHeight = document.getElementById('level-info').offsetHeight + document.getElementById('game-info').offsetHeight;
+      const controlsHeight = document.querySelector('.controls').offsetHeight;
+      const extraHeight = headerHeight + infoHeight + controlsHeight + 40; // 40 px dodatkowego marginesu
+      const availableWidth = window.innerWidth - 20; // margines po bokach
+      const availableHeight = window.innerHeight - extraHeight;
+      const availableSize = Math.min(availableWidth, availableHeight);
+      const newSize = Math.floor(availableSize / cols) * cols;
+      cellSize = newSize / cols;
+      width = cols * cellSize;
+      height = rows * cellSize;
+      canvas.width = width;
+      canvas.height = height;
+    }
 
-            switch (direction) {
-                case 'up':
-                    if (!currentCell.walls.top) {
-                        player.row--;
-                    }
-                    break;
-                case 'right':
-                    if (!currentCell.walls.right) {
-                        player.col++;
-                    }
-                    break;
-                case 'down':
-                    if (!currentCell.walls.bottom) {
-                        player.row++;
-                    }
-                    break;
-                case 'left':
-                    if (!currentCell.walls.left) {
-                        player.col--;
-                    }
-                    break;
-            }
+    function initGame() {
+      resizeGame();
+      player = { row: 0, col: 0 };
+      initGrid();
+      generateMaze();
+      createHidingSpots();
+      createGuards();
+      levelInfo.textContent = `Poziom: ${level} | Strażnicy: ${guardCount}`;
+      drawMaze();
+      winModal.style.display = 'none';
+      loseModal.style.display = 'none';
+      clearInterval(gameInterval);
+      gameInterval = setInterval(updateGuards, 500);
+    }
 
-            // Sprawdzanie kolizji ze strażnikami (tylko jeśli nie jest w kryjówce)
-            if (!isPlayerHiding()) {
-                for (const guard of guards) {
-                    if (guard.row === player.row && guard.col === player.col) {
-                        stopGame();
-                        loseModal.style.display = 'block';
-                        return;
-                    }
-                }
-            }
+    function resetGame() { initGame(); }
+    function nextLevel() { initGame(); }
 
-            drawMaze();
-
-            // Sprawdzanie, czy gracz dotarł do mety
-            if (player.row === finish.row && player.col === finish.col) {
-                stopGame();
-                level++;
-                guardCount = Math.min(level + 1, 8); // Maksymalnie 8 strażników
-                winModal.style.display = 'block';
-            }
-        }
-
-        // Zatrzymanie gry
-        function stopGame() {
-            clearInterval(gameInterval);
-        }
-
-        // Inicjalizacja gry
-        function initGame() {
-            player = { row: 0, col: 0 };
-            initGrid();
-            generateMaze();
-            createHidingSpots();
-            createGuards();
-            levelInfo.textContent = `Poziom: ${level} | Strażnicy: ${guardCount}`;
-
-            drawMaze();
-            winModal.style.display = 'none';
-            loseModal.style.display = 'none';
-
-            // Interwał dla ruchu strażników (co 500ms)
-            clearInterval(gameInterval);
-            gameInterval = setInterval(updateGuards, 500);
-        }
-
-        // Resetowanie gry po przegranej
-        function resetGame() {
-            initGame();
-        }
-
-        // Przejście do następnego poziomu
-        function nextLevel() {
-            initGame();
-        }
-
-        // Sterowanie
-        upBtn.addEventListener('click', () => movePlayer('up'));
-        rightBtn.addEventListener('click', () => movePlayer('right'));
-        downBtn.addEventListener('click', () => movePlayer('down'));
-        leftBtn.addEventListener('click', () => movePlayer('left'));
-
-        // Sterowanie klawiaturą
-        document.addEventListener('keydown', (e) => {
-            switch (e.key) {
-                case 'ArrowUp':
-                    movePlayer('up');
-                    break;
-                case 'ArrowRight':
-                    movePlayer('right');
-                    break;
-                case 'ArrowDown':
-                    movePlayer('down');
-                    break;
-                case 'ArrowLeft':
-                    movePlayer('left');
-                    break;
-            }
-        });
-
-        // Restart gry
-        playAgainBtn.addEventListener('click', nextLevel);
-        tryAgainBtn.addEventListener('click', resetGame);
-
-        // Uruchomienie gry
-        initGame();
-    </script>
+    upBtn.addEventListener('click', () => movePlayer('up'));
+    rightBtn.addEventListener('click', () => movePlayer('right'));
+    downBtn.addEventListener('click', () => movePlayer('down'));
+    leftBtn.addEventListener('click', () => movePlayer('left'));
+    document.addEventListener('keydown', (e) => {
+      switch (e.key) {
+        case 'ArrowUp': movePlayer('up'); break;
+        case 'ArrowRight': movePlayer('right'); break;
+        case 'ArrowDown': movePlayer('down'); break;
+        case 'ArrowLeft': movePlayer('left'); break;
+      }
+    });
+    playAgainBtn.addEventListener('click', nextLevel);
+    tryAgainBtn.addEventListener('click', resetGame);
+    window.addEventListener('resize', () => {
+      resizeGame();
+      drawMaze();
+    });
+    initGame();
+  </script>
 </body>
 </html>
