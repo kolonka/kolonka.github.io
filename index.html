@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gra Labirynt</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        #game-container {
+            margin-bottom: 20px;
+        }
+        #maze {
+            border: 2px solid #333;
+            background-color: white;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-gap: 5px;
+            margin-top: 20px;
+            width: 150px;
+        }
+        button {
+            padding: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #win-modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 300px;
+            text-align: center;
+            border-radius: 5px;
+        }
+        #up-btn { grid-column: 2; grid-row: 1; }
+        #left-btn { grid-column: 1; grid-row: 2; }
+        #down-btn { grid-column: 2; grid-row: 2; }
+        #right-btn { grid-column: 3; grid-row: 2; }
+    </style>
+</head>
+<body>
+    <h1>Gra Labirynt</h1>
+    <div id="game-container">
+        <canvas id="maze" width="500" height="500"></canvas>
+        <div class="controls">
+            <button id="up-btn">↑</button>
+            <button id="left-btn">←</button>
+            <button id="down-btn">↓</button>
+            <button id="right-btn">→</button>
+        </div>
+    </div>
+
+    <div id="win-modal">
+        <div class="modal-content">
+            <h2>Gratulacje!</h2>
+            <p>Udało Ci się przejść labirynt!</p>
+            <button id="play-again">Zagraj ponownie</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('maze');
+        const ctx = canvas.getContext('2d');
+        const upBtn = document.getElementById('up-btn');
+        const leftBtn = document.getElementById('left-btn');
+        const downBtn = document.getElementById('down-btn');
+        const rightBtn = document.getElementById('right-btn');
+        const winModal = document.getElementById('win-modal');
+        const playAgainBtn = document.getElementById('play-again');
+
+        // Parametry labiryntu
+        const cellSize = 25;
+        const rows = 19;
+        const cols = 19;
+        const width = cols * cellSize;
+        const height = rows * cellSize;
+
+        canvas.width = width;
+        canvas.height = height;
+
+        // Klasa reprezentująca komórkę labiryntu
+        class Cell {
+            constructor(row, col) {
+                this.row = row;
+                this.col = col;
+                this.visited = false;
+                this.walls = {
+                    top: true,
+                    right: true,
+                    bottom: true,
+                    left: true
+                };
+            }
+
+            removeWall(next) {
+                const rowDiff = this.row - next.row;
+                const colDiff = this.col - next.col;
+
+                if (rowDiff === 1) {
+                    this.walls.top = false;
+                    next.walls.bottom = false;
+                } else if (rowDiff === -1) {
+                    this.walls.bottom = false;
+                    next.walls.top = false;
+                }
+
+                if (colDiff === 1) {
+                    this.walls.left = false;
+                    next.walls.right = false;
+                } else if (colDiff === -1) {
+                    this.walls.right = false;
+                    next.walls.left = false;
+                }
+            }
+
+            draw() {
+                const x = this.col * cellSize;
+                const y = this.row * cellSize;
+
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+
+                if (this.walls.top) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + cellSize, y);
+                    ctx.stroke();
+                }
+
+                if (this.walls.right) {
+                    ctx.beginPath();
+                    ctx.moveTo(x + cellSize, y);
+                    ctx.lineTo(x + cellSize, y + cellSize);
+                    ctx.stroke();
+                }
+
+                if (this.walls.bottom) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, y + cellSize);
+                    ctx.lineTo(x + cellSize, y + cellSize);
+                    ctx.stroke();
+                }
+
+                if (this.walls.left) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x, y + cellSize);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        // Model gry
+        let grid = [];
+        let player = { row: 0, col: 0 };
+        let finish = { row: rows - 1, col: cols - 1 };
+
+        // Inicjalizacja labiryntu
+        function initGrid() {
+            grid = [];
+            for (let row = 0; row < rows; row++) {
+                grid[row] = [];
+                for (let col = 0; col < cols; col++) {
+                    grid[row][col] = new Cell(row, col);
+                }
+            }
+        }
+
+        // Generowanie labiryntu algorytmem DFS
+        function generateMaze() {
+            const stack = [];
+            const startCell = grid[0][0];
+            startCell.visited = true;
+            stack.push(startCell);
+
+            while (stack.length > 0) {
+                const current = stack[stack.length - 1];
+                const neighbors = getUnvisitedNeighbors(current);
+
+                if (neighbors.length === 0) {
+                    stack.pop();
+                } else {
+                    const next = neighbors[Math.floor(Math.random() * neighbors.length)];
+                    next.visited = true;
+                    current.removeWall(next);
+                    stack.push(next);
+                }
+            }
+        }
+
+        function getUnvisitedNeighbors(cell) {
+            const neighbors = [];
+            const { row, col } = cell;
+
+            // Sprawdzamy sąsiadów w kolejności: góra, prawo, dół, lewo
+            const directions = [
+                { row: row - 1, col: col },
+                { row: row, col: col + 1 },
+                { row: row + 1, col: col },
+                { row: row, col: col - 1 }
+            ];
+
+            for (const dir of directions) {
+                if (dir.row >= 0 && dir.row < rows && dir.col >= 0 && dir.col < cols) {
+                    const neighbor = grid[dir.row][dir.col];
+                    if (!neighbor.visited) {
+                        neighbors.push(neighbor);
+                    }
+                }
+            }
+
+            return neighbors;
+        }
+
+        // Rysowanie labiryntu
+        function drawMaze() {
+            ctx.clearRect(0, 0, width, height);
+
+            // Rysowanie komórek
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    grid[row][col].draw();
+                }
+            }
+
+            // Oznaczanie startu (zielony)
+            ctx.fillStyle = 'green';
+            ctx.fillRect(player.col * cellSize + 5, player.row * cellSize + 5, cellSize - 10, cellSize - 10);
+
+            // Oznaczanie mety (czerwony)
+            ctx.fillStyle = 'red';
+            ctx.fillRect(finish.col * cellSize + 5, finish.row * cellSize + 5, cellSize - 10, cellSize - 10);
+        }
+
+        // Poruszanie się po labiryncie
+        function movePlayer(direction) {
+            const currentCell = grid[player.row][player.col];
+
+            switch (direction) {
+                case 'up':
+                    if (!currentCell.walls.top) {
+                        player.row--;
+                    }
+                    break;
+                case 'right':
+                    if (!currentCell.walls.right) {
+                        player.col++;
+                    }
+                    break;
+                case 'down':
+                    if (!currentCell.walls.bottom) {
+                        player.row++;
+                    }
+                    break;
+                case 'left':
+                    if (!currentCell.walls.left) {
+                        player.col--;
+                    }
+                    break;
+            }
+
+            drawMaze();
+
+            // Sprawdzanie, czy gracz dotarł do mety
+            if (player.row === finish.row && player.col === finish.col) {
+                setTimeout(() => {
+                    winModal.style.display = 'block';
+                }, 300);
+            }
+        }
+
+        // Inicjalizacja gry
+        function initGame() {
+            player = { row: 0, col: 0 };
+            initGrid();
+            generateMaze();
+            drawMaze();
+            winModal.style.display = 'none';
+        }
+
+        // Sterowanie
+        upBtn.addEventListener('click', () => movePlayer('up'));
+        rightBtn.addEventListener('click', () => movePlayer('right'));
+        downBtn.addEventListener('click', () => movePlayer('down'));
+        leftBtn.addEventListener('click', () => movePlayer('left'));
+
+        // Sterowanie klawiaturą
+        document.addEventListener('keydown', (e) => {
+            switch (e.key) {
+                case 'ArrowUp':
+                    movePlayer('up');
+                    break;
+                case 'ArrowRight':
+                    movePlayer('right');
+                    break;
+                case 'ArrowDown':
+                    movePlayer('down');
+                    break;
+                case 'ArrowLeft':
+                    movePlayer('left');
+                    break;
+            }
+        });
+
+        // Restart gry
+        playAgainBtn.addEventListener('click', initGame);
+
+        // Uruchomienie gry
+        initGame();
+    </script>
+</body>
+</html>
